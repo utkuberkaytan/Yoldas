@@ -1,16 +1,18 @@
-//Utku Berkay TAN, UBT, Yoldaş Project (Hardware: v2.0  Software: v1.5) 
+//Utku Berkay TAN, UBT, Yoldaş Project (Hardware: v3.0  Software: v2.0) 
 char data;                                     //bluetooth veri tanımlaması
 long sure;
 long uzaklik;
-int kirmiziPin = 9;                 //RGB Ledin kırmızı bacağının takılacağı pin
-int yesilPin = 8;                  //RGB Ledin yeşil bacağının takılacağı pin       
-                   
-#define trig 11                                 // tanımlamalar
-#define echo 10
-#define sol_motor_1 5
-#define sol_motor_2 6
-#define sag_motor_1 3
-#define sag_motor_2 4
+#include "DHT.h"
+#define DHTPIN 11
+#define DHTTYPE DHT11   
+DHT dht(DHTPIN, DHTTYPE);               
+#define trig 8                                 // tanımlamalar
+#define echo 9
+#define sol_motor_1 2
+#define sol_motor_2 3
+#define sag_motor_1 4
+#define sag_motor_2 5
+#define korna 10
 //Fonksiyon Tanımlamaları
 void ileri(){
 
@@ -37,7 +39,7 @@ void sol(){
   
 
   digitalWrite(sol_motor_1, LOW);
-  digitalWrite(sol_motor_2, LOW);
+  digitalWrite(sol_motor_2, HIGH);
   digitalWrite(sag_motor_1, HIGH);
   digitalWrite(sag_motor_2, LOW);
   
@@ -48,7 +50,7 @@ void sag(){
   digitalWrite(sol_motor_1, HIGH);
   digitalWrite(sol_motor_2, LOW);
   digitalWrite(sag_motor_1, LOW);
-  digitalWrite(sag_motor_2, LOW);
+  digitalWrite(sag_motor_2, HIGH);
   
 }
 
@@ -62,75 +64,76 @@ void dur(){
 }
 
 void setup() {
-pinMode(5,OUTPUT);   //Sol Motor 2
-pinMode(6,OUTPUT);   //Sol Motor 1
-pinMode(4,OUTPUT);   //Sağ Motor 1
-pinMode(3,OUTPUT);   //Sağ Motor 2
-pinMode(2,OUTPUT);   //Sağ Motor EN
-pinMode(7,OUTPUT);   //Sol Motor EN
-pinMode(11,OUTPUT);   //TrigPin
-pinMode(10,INPUT);   //EchoPin
-pinMode(8, OUTPUT);
-pinMode(9, OUTPUT);
-Serial.begin(9600);
+  pinMode(trig,OUTPUT);
+  pinMode(echo,INPUT);
+  pinMode(sol_motor_1, OUTPUT);
+  pinMode(sol_motor_2, OUTPUT);
+  pinMode(sag_motor_1, OUTPUT);
+  pinMode(sag_motor_2, OUTPUT);
+  Serial.begin(9600);
+  dht.begin();
+  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(korna, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(1000);
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(1000);
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(1000);
+  digitalWrite(LED_BUILTIN, LOW);
 
 }
-
-
- 
-void loop() {
-
-   
-
+int mesafeOlcumu(){
   digitalWrite(trig, LOW); 
   delayMicroseconds(5); 
   digitalWrite(trig, HIGH); 
   delayMicroseconds(10);
   digitalWrite(trig, LOW);   
   sure = pulseIn(echo, HIGH); 
-  uzaklik = sure /29.1/2; 
-  if(uzaklik > 200){
-  uzaklik = 200;
+  uzaklik = sure /29.1/2;
+  
+  return uzaklik;
+} 
+void loop() {
+  if(mesafeOlcumu() <= 25){
+    geri();
+    delay(300);
+    dur();
+  }
+  Serial.print("D");
+  Serial.println(mesafeOlcumu());
+  float t = dht.readTemperature();
+  Serial.print("T");
+  Serial.println(t);
+  delay(10);
+  if(Serial.available()>0){         
+    data = Serial.read();           
   }
   
   
+  if(data == 'F'){            
+    ileri();
+  }
+  
+  else if(data == 'B'){      
+    geri();
+  }
+  
+  else if(data == 'L'){      
+    sol();
+  }
+  
+  else if(data == 'R'){     
+    sag();
+  }
+  
+  else if(data == 'S'){      
+    dur();
+  }
+  else if(data == 'X'){
+    digitalWrite(korna,HIGH);
+    delay(400);
+    digitalWrite(korna,LOW);
+  }
 
-if(Serial.available()>0){         //Seri haberleşmeden veri gelmesini bekliyoruz.
-    data = Serial.read();           //Seri haberleşmeden gelen veriyi okuyoruz. 
-  }
- 
- 
-if(data == 'F'){            
- ileri();
-}
- 
-else if(data == 'B'){      
-  geri();
-}
- 
-else if(data == 'L'){      
-  sol();
-}
- 
-else if(data == 'R'){     
- sag();
-}
- 
-else if(data == 'S'){      
-  dur();
-}
-if(uzaklik <= 25){                        //duvara çarpmama
-  geri();
-  delay(100);
-}
-else if(uzaklik == 0){
-  dur();
-  delay(100);
-  digitalWrite(9, HIGH);
-}
-else{
-  if(Serial.available()>0){         //Seri haberleşmeden veri gelmesini bekliyoruz.
-    data = Serial.read();           //Seri haberleşmeden gelen veriyi okuyoruz. 
-  }
-}
 }
